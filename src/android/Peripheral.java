@@ -44,6 +44,7 @@ public class Peripheral extends BluetoothGattCallback {
     private int advertisingRSSI;
     private boolean connected = false;
     private boolean connecting = false;
+    private connectionRetryCount = 0;
     private ConcurrentLinkedQueue<BLECommand> commandQueue = new ConcurrentLinkedQueue<BLECommand>();
     private boolean bleProcessing;
 
@@ -68,6 +69,10 @@ public class Peripheral extends BluetoothGattCallback {
         connecting = true;
 
         connectCallback = callbackContext;
+
+    }
+
+    private void proceedConnect() {
         if (Build.VERSION.SDK_INT < 23) {
             gatt = device.connectGatt(activity, false, this);
         } else {
@@ -80,6 +85,7 @@ public class Peripheral extends BluetoothGattCallback {
     }
 
     public void disconnect() {
+        connectionRetryCount = 0;
         connectCallback = null;
         connected = false;
         connecting = false;
@@ -221,17 +227,24 @@ public class Peripheral extends BluetoothGattCallback {
         this.gatt = gatt;
 
         if (newState == BluetoothGatt.STATE_CONNECTED) {
-
+            connectionRetryCount = 0;
             connected = true;
             connecting = false;
             gatt.discoverServices();
 
         } else {
 
-            if (connectCallback != null) {
-                connectCallback.error(this.asJSONObject("Peripheral Disconnected"));
+            if (newState == BluetoothGatt.STATE_DISCONNECTED && status == 133 &&
+                    connectionRetryCount < 3 && connecting && connectCallback != null) {
+                connectionRetryCount++;
+                proceedConnect();
+            } else {
+                if (connectCallback != null) {
+                    connectCallback.error(this.asJSONObject("Peripheral Disconnected"));
+                }
+                disconnect();
             }
-            disconnect();
+
         }
 
     }
