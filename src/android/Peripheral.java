@@ -44,12 +44,12 @@ public class Peripheral extends BluetoothGattCallback {
     private int advertisingRSSI;
     private boolean connected = false;
     private boolean connecting = false;
-    private connectionRetryCount = 0;
+    private int connectionRetryCount = 0;
     private ConcurrentLinkedQueue<BLECommand> commandQueue = new ConcurrentLinkedQueue<BLECommand>();
     private boolean bleProcessing;
 
     BluetoothGatt gatt;
-
+    private Activity activity;
     private CallbackContext connectCallback;
     private CallbackContext readCallback;
     private CallbackContext writeCallback;
@@ -69,6 +69,8 @@ public class Peripheral extends BluetoothGattCallback {
         connecting = true;
 
         connectCallback = callbackContext;
+        this.activity = activity;
+        proceedConnect();
 
     }
 
@@ -81,7 +83,7 @@ public class Peripheral extends BluetoothGattCallback {
 
         PluginResult result = new PluginResult(PluginResult.Status.NO_RESULT);
         result.setKeepCallback(true);
-        callbackContext.sendPluginResult(result);
+        connectCallback.sendPluginResult(result);
     }
 
     public void disconnect() {
@@ -225,7 +227,7 @@ public class Peripheral extends BluetoothGattCallback {
     public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
 
         this.gatt = gatt;
-
+        LOG.d(TAG, "newState: " + newState + " status: " + status);
         if (newState == BluetoothGatt.STATE_CONNECTED) {
             connectionRetryCount = 0;
             connected = true;
@@ -234,8 +236,9 @@ public class Peripheral extends BluetoothGattCallback {
 
         } else {
 
-            if (newState == BluetoothGatt.STATE_DISCONNECTED && status == 133 &&
+            if (newState == BluetoothGatt.STATE_DISCONNECTED &&
                     connectionRetryCount < 3 && connecting && connectCallback != null) {
+                LOG.d(TAG, "Connect retry: " + connectionRetryCount);
                 connectionRetryCount++;
                 proceedConnect();
             } else {
