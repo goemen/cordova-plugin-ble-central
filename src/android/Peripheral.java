@@ -237,7 +237,7 @@ public class Peripheral extends BluetoothGattCallback {
         } else {
 
             if (newState == BluetoothGatt.STATE_DISCONNECTED &&
-                    connectionRetryCount < 3 && connecting && connectCallback != null) {
+                    connectionRetryCount <= 5 && connecting && connectCallback != null) {
                 LOG.d(TAG, "Connect retry: " + connectionRetryCount);
                 connectionRetryCount++;
                 proceedConnect();
